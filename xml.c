@@ -15,10 +15,6 @@ XML my_xml = XML_tag("tag-name",
 	),
 	NULL // Done with children
 )
-The above yields XML like the following:
-
-<tag-name attr-name-1="attr-value-1" attr-name-2="attr-value-2">Some text &amp; stuff in the tag<child-tag/></tag-name>
-
 As you see, you give the name of the tag as the first argument, followed by
 pairs of strings for each attribute and each value.  Then give NULL to signify
 the end of the attributes.  Then give the children of the tag, which are
@@ -26,10 +22,16 @@ either strings (plain text outside of tags) or more XML tags.  Finish with
 NULL to signify the end of children.  Do not escape ampersands, angle brackets,
 and quotes in the strings you give to this function.
 
-You can find a tag that is a child of another tag by name with XML_get_child
+You can turn the XML into a string with XML_as_text()
+const char* text = XML_as_text(my_xml);
+which give you a string containing:
+<tag-name attr-name-1="attr-value-1" attr-name-2="attr-value-2">Some text &amp; stuff in the tag<child-tag/></tag-name>
+
+
+You can find a tag that is a child of another tag by name with XML_get_child()
 XML child = XML_get_child(my_xml, "child-tag")  // Yields <child-tag/>
 
-You can get the value of an attribute of a tag by name with XML_get_attr
+You can get the value of an attribute of a tag by name with XML_get_attr()
 const char* val = XML_get_attr(my_xml, "attr-name-2")  // Yields "attr-value-2"
 
 TODO: Parsing a string into XML will come later.
@@ -64,6 +66,15 @@ union XML {
 	XML_Tag* tag;
 	const char* str;
 };
+
+uint XML_is_str (XML);
+uint XML_strlen (XML);
+const char* XML_escape (const char*);
+const char* XML_unescape (const char*);
+const char* XML_as_text (const char*);
+const char* XML_get_attr (XML, const char*);
+XML XML_get_child (XML, const char*);
+
 
 uint XML_is_str (XML xml) { return xml.tag->is_str; }
 
