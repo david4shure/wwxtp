@@ -12,7 +12,6 @@
 
 #define PORT 4114
 #define MAX_BUFFER 512
-#define LOCAL_HOST "127.0.0.1"
 
 #define CHECK(f, ...) ({ int ret = f(__VA_ARGS__); if (ret == -1) {fprintf(stderr, "%s() returned error: %d (%s)\n", #f, errno, strerror(errno)); exit(errno); }; ret; })
 
@@ -23,6 +22,14 @@ sockaddr_in ip_addr (const char* addr) {
     sockaddr_in sa;
     sa.sin_family = AF_INET;
     inet_pton(AF_INET, addr, &sa.sin_addr);
+    sa.sin_port = htons(PORT);
+    return sa;
+}
+
+sockaddr_in any_addr () {
+    sockaddr_in sa;
+    sa.sin_family = AF_INET;
+	sa.sin_addr.s_addr = INADDR_ANY;
     sa.sin_port = htons(PORT);
     return sa;
 }
@@ -41,7 +48,7 @@ char* recv_string (int sock) {
 
 int main () {
     int sock = CHECK(socket, AF_INET, SOCK_STREAM, 0);
-    sockaddr_in listen_addr = ip_addr("127.0.0.1");
+    sockaddr_in listen_addr = ip_addr("192.168.1.3");
     CHECK(bind, sock, (sockaddr*)&listen_addr, sizeof(listen_addr));
     CHECK(listen, sock, SOMAXCONN);
     sockaddr_in client_addr;
