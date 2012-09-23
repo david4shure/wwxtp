@@ -50,6 +50,55 @@ char* recv_string (int sock) {
     return buf;
 }
 
+const char* error_response = "<wwxtp>Error!</wwxtp>";
+
+const char* process_message (const char* message) {
+    puts("Start processing message...");
+    XML wwxtp = XML_parse(message);
+    XML query = XML_get_child(wwxtp, "query");
+    XML command = XML_get_child(query, "command");
+    XML command_text = command.tag->contents[0];
+    if (!XML_is_str(command_text)) return error_response;
+    if (0!=strcmp(command_text.str, "TEST")) return error_response;
+    XML id = XML_get_child(query, "id");
+    XML id_text = id.tag->contents[0];
+    if (!XML_is_str(id_text)) return error_response;
+    printf("ID: %s\n", id_text.str);
+     // search database
+    uint i;
+    for (i = 0; i < TEST_DATABASE_SIZE; i++) {
+        if (0==strcmp(test_database[i].id, id_text.str)) {
+            puts("Building xml...");
+            return XML_as_text(
+                XML_tag( "wwxtp", NULL,
+                    XML_tag( "response", NULL,
+                        XML_tag( "id", NULL,
+                            test_database[i].id,
+                            NULL
+                        ),
+                        XML_tag( "city", NULL,
+                            test_database[i].city,
+                            NULL
+                        ),
+                        XML_tag( "name", NULL,
+                            test_database[i].name,
+                            NULL
+                        ),
+                        XML_tag( "where", NULL,
+                            test_database[i].where,
+                            NULL
+                        ),
+                        NULL
+                    ),
+                    NULL
+                )
+            );
+        }
+    }
+    return "<wwxtp>Error: Not found</wwxtp>";
+}
+
+
 int main () {
     int sock = CHECK(socket, AF_INET, SOCK_STREAM, 0);
     sockaddr_in listen_addr = any_addr();
@@ -65,9 +114,13 @@ int main () {
         new_sock = CHECK(accept, sock, (sockaddr*)&client_addr, &client_addr_len);
         char* message = recv_string(new_sock);
         puts(message);
-        CHECK(send, new_sock, "Hi there, I got your message!\n", 31, 0);
+        const char* response = process_message((const char*)message);
+        puts("Response generated.");
+        CHECK(send, new_sock, response, strlen(response) + 1, 0);
+        puts("Response sent.\n");
         char endbuf [MAX_BUFFER];
         CHECK(recv, new_sock, endbuf, MAX_BUFFER, 0);
+        puts("Close request recieved.");
         CHECK(close, new_sock);
     } while (0);
     return 0;

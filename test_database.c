@@ -7,7 +7,8 @@ typedef struct Test_Entry {
     const char* where;
 } Test_Entry;
 
-Test_Entry test_database [9] = {
+#define TEST_DATABASE_SIZE 9
+Test_Entry test_database [TEST_DATABASE_SIZE] = {
     {"IZA", "SANTA YNEZ, CA",      "SANTA YNEZ AIRPORT",               "-"},
     {"SBA", "SANTA BARBARA, CA",   "SANTA BARBARA MUNICIPAL AIRPORT",  "15.9 nm SE"},
     {"LPC", "LOMPOC, CA",          "LOMPOC AIRPORT",                   "19.7 nm W"},
