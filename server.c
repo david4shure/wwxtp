@@ -37,18 +37,21 @@ int main () {
   char* buffer = GC_MALLOC(MAX_BUFFER);
   int recv_size = 0;
   int msg_size = 0;
-  int conn;
-  while (conn = accept(our_socket, NULL, NULL) != -1) {
-    int select_r;
-    fd_set fds;
-    do {
-      FD_ZERO(&fds);
-      FD_SET(conn, &fds);
-      select_r = select(conn + 1, &fds, NULL, NULL, NULL);
-    } while (select_r == -1 && errno == EINTR);
-    if (select_r > 0) {
-      if (FD_ISSET(conn, &fds)) {
-        while (recv_size = recv(conn, buffer + msg_size, MAX_BUFFER, 0)) {    
+//  int conn;
+//  while (conn = accept(our_socket, NULL, NULL) != -1) {
+//    int select_r;
+//    fd_set fds;
+//    do {
+//      FD_ZERO(&fds);
+//      FD_SET(conn, &fds);
+//      struct timeval tv;
+//      tv.tv_sec = 30;
+//      tv.tv_usec = 0;
+//      select_r = select(conn + 1, &fds, NULL, NULL, &tv);
+//    } while (select_r == -1 && errno == EINTR);
+//    if (select_r > 0) {
+//      if (FD_ISSET(conn, &fds)) {
+        while (recv_size = recvfrom(our_socket, buffer + msg_size, MAX_BUFFER, 0, NULL, NULL)) {    
           if (recv_size == -1) {
             printf("recv returned with errno %d (%s)\n", errno, strerror(errno));
             return errno;
@@ -60,13 +63,13 @@ int main () {
         }
         buffer[msg_size] = 0;
         puts(buffer);
-      }
-    }
-    else {
-      printf("select() barfed: %d (%s)\n", errno, strerror(errno));
-      return errno;
-    }
-  }
+//      }
+//    }
+//    else {
+//      printf("select() barfed: %d (%s)\n", errno, strerror(errno));
+//      return errno;
+//    }
+//  }
   printf("Accept errored! %d (%s)\n", errno, strerror(errno));
   return errno;
 
