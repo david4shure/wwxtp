@@ -7,71 +7,53 @@
 #include <errno.h>
 #include <string.h>
 #include <gc/gc.h>
+#include <stdlib.h>
+
 
 #define PORT 4114
 #define MAX_BUFFER 512
 #define LOCAL_HOST "127.0.0.1"
 
+#define CHECK(f, ...) ({ int ret = f(__VA_ARGS__); if (ret == -1) {fprintf(stderr, "%s() returned error: %d (%s)\n", #f, errno, strerror(errno)); exit(errno); }; ret; })
+
+typedef struct sockaddr sockaddr;
+typedef struct sockaddr_in sockaddr_in;
+
+sockaddr_in ip_addr (const char* addr) {
+    sockaddr_in sa;
+    sa.sin_family = AF_INET;
+    inet_pton(AF_INET, addr, &sa.sin_addr);
+    sa.sin_port = htons(PORT);
+    return sa;
+}
+
+char* recv_string (int sock) {
+    char* buf = GC_malloc(MAX_BUFFER);
+    uint msg_size = 0;
+    uint got = 0;
+    while (got = CHECK(recv, sock, buf, MAX_BUFFER, 0)) {
+        msg_size += got;
+        buf = GC_realloc(buf, got + MAX_BUFFER);
+    }
+    buf[msg_size] = 0;
+    return buf;
+}
+
 int main () {
-
-  int our_socket = socket(AF_INET, SOCK_STREAM, 0);
-
-  struct sockaddr_in our_address;
-  our_address.sin_family = AF_INET;
-  inet_pton(AF_INET, LOCAL_HOST, &our_address.sin_addr);
-  our_address.sin_port = htons(PORT);
-
-  // Binding our socket with a port and an IP, in our case localhost (127.0.0.1)
-  if (bind(our_socket, (struct sockaddr *) &our_address, sizeof(our_address)) == -1) {
-    printf("Failed to bind with errno %d (%s)\n", errno, strerror(errno));
-    return errno;
-  }
-
-  // Dealing with errors while attempted to listen
-  if (listen(our_socket, SOMAXCONN) == -1) {
-    printf("Failed to listen. relevant info : %d (%s)\n", errno, strerror(errno));
-    return errno;
-  }
-
-  // Variable that holds our incoming data
-  char* buffer = GC_MALLOC(MAX_BUFFER);
-  int recv_size = 0;
-  int msg_size = 0;
-//  int conn;
-//  while (conn = accept(our_socket, NULL, NULL) != -1) {
-//    int select_r;
-//    fd_set fds;
-//    do {
-//      FD_ZERO(&fds);
-//      FD_SET(conn, &fds);
-//      struct timeval tv;
-//      tv.tv_sec = 30;
-//      tv.tv_usec = 0;
-//      select_r = select(conn + 1, &fds, NULL, NULL, &tv);
-//    } while (select_r == -1 && errno == EINTR);
-//    if (select_r > 0) {
-//      if (FD_ISSET(conn, &fds)) {
-        while (recv_size = recvfrom(our_socket, buffer + msg_size, MAX_BUFFER, 0, NULL, NULL)) {    
-          if (recv_size == -1) {
-            printf("recv returned with errno %d (%s)\n", errno, strerror(errno));
-            return errno;
-          }
-          msg_size += recv_size;
-          buffer = GC_REALLOC(buffer, msg_size + MAX_BUFFER);
-          buffer[msg_size] = 0;
-          puts(buffer);
-        }
-        buffer[msg_size] = 0;
-        puts(buffer);
-//      }
-//    }
-//    else {
-//      printf("select() barfed: %d (%s)\n", errno, strerror(errno));
-//      return errno;
-//    }
-//  }
-  printf("Accept errored! %d (%s)\n", errno, strerror(errno));
-  return errno;
-
-  return 0;
+    int sock = CHECK(socket, AF_INET, SOCK_STREAM, 0);
+    sockaddr_in listen_addr = ip_addr("127.0.0.1");
+    CHECK(bind, sock, (sockaddr*)&listen_addr, sizeof(listen_addr));
+    CHECK(listen, sock, SOMAXCONN);
+    sockaddr_in client_addr;
+    socklen_t client_addr_len;
+    int new_sock;
+    while (new_sock = CHECK(accept, sock, (sockaddr*)&client_addr, &client_addr_len)) {
+        char* message = recv_string(new_sock);
+        puts(message);
+        CHECK(send, new_sock, "Hi there, I got your message!\n", 31, 0);
+        char endbuf [MAX_BUFFER];
+        CHECK(recv, new_sock, endbuf, MAX_BUFFER, 0);
+        CHECK(close, new_sock);
+    }
+    return 0;
 }
