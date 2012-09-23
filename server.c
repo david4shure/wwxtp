@@ -9,6 +9,8 @@
 #include <gc/gc.h>
 #include <stdlib.h>
 
+#include "xml.c"
+#include "test_database.c"
 
 #define PORT 4114
 #define MAX_BUFFER 512
@@ -38,29 +40,35 @@ char* recv_string (int sock) {
     char* buf = GC_malloc(MAX_BUFFER);
     uint msg_size = 0;
     uint got = 0;
-    while (got = CHECK(recv, sock, buf, MAX_BUFFER, 0)) {
+    printf("recv...\n");
+    got = CHECK(recv, sock, buf, MAX_BUFFER, 0);
+        printf("%d\n", got);
         msg_size += got;
         buf = GC_realloc(buf, got + MAX_BUFFER);
-    }
+    printf("Got a message.\n");
     buf[msg_size] = 0;
     return buf;
 }
 
 int main () {
     int sock = CHECK(socket, AF_INET, SOCK_STREAM, 0);
-    sockaddr_in listen_addr = ip_addr("192.168.1.3");
+    sockaddr_in listen_addr = any_addr();
+    printf("bind...\n");
     CHECK(bind, sock, (sockaddr*)&listen_addr, sizeof(listen_addr));
+    printf("listen...\n");
     CHECK(listen, sock, SOMAXCONN);
     sockaddr_in client_addr;
     socklen_t client_addr_len;
     int new_sock;
-    while (new_sock = CHECK(accept, sock, (sockaddr*)&client_addr, &client_addr_len)) {
+    printf("accept...\n");
+    do {
+        new_sock = CHECK(accept, sock, (sockaddr*)&client_addr, &client_addr_len);
         char* message = recv_string(new_sock);
         puts(message);
         CHECK(send, new_sock, "Hi there, I got your message!\n", 31, 0);
         char endbuf [MAX_BUFFER];
         CHECK(recv, new_sock, endbuf, MAX_BUFFER, 0);
         CHECK(close, new_sock);
-    }
+    } while (0);
     return 0;
 }
