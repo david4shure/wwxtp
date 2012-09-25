@@ -100,6 +100,7 @@ const char* process_message (const char* message) {
 
 
 int main () {
+    GC_init();
     int sock = CHECK(socket, AF_INET, SOCK_STREAM, 0);
     sockaddr_in listen_addr = any_addr();
     printf("bind...\n");
@@ -118,10 +119,11 @@ int main () {
         puts("Response generated.");
         CHECK(send, new_sock, response, strlen(response) + 1, 0);
         puts("Response sent.\n");
-        char endbuf [MAX_BUFFER];
-        CHECK(recv, new_sock, endbuf, MAX_BUFFER, 0);
-        puts("Close request recieved.");
+//        char endbuf [MAX_BUFFER];
+//        CHECK(recv, new_sock, endbuf, MAX_BUFFER, 0);
+//        puts("Close request recieved.");
         CHECK(close, new_sock);
     } while (0);
+    CHECK(close, sock);
     return 0;
 }
