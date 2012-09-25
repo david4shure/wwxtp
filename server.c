@@ -56,11 +56,14 @@ const char* process_message (const char* message) {
     puts("Start processing message...");
     XML wwxtp = XML_parse(message);
     XML query = XML_get_child(wwxtp, "query");
+    if (!XML_is_valid(query)) return error_response;
     XML command = XML_get_child(query, "command");
+    if (!XML_is_valid(command)) return error_response;
     XML command_text = command.tag->contents[0];
     if (!XML_is_str(command_text)) return error_response;
     if (0!=strcmp(command_text.str, "TEST")) return error_response;
     XML id = XML_get_child(query, "id");
+    if (!XML_is_valid(id)) return error_response;
     XML id_text = id.tag->contents[0];
     if (!XML_is_str(id_text)) return error_response;
     printf("ID: %s\n", id_text.str);
