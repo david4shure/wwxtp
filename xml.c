@@ -90,6 +90,61 @@ const char* XML_get_attr (XML, const char*);
 XML XML_get_child (XML, const char*);
 
 
+typedef struct XML_str_replace_info {
+    const char* from;
+    const char* to;
+    uint from_len;
+    uint to_len;
+} XML_str_replace_info;
+typedef struct XML_strpos_link XML_strpos_link;
+struct XML_strpos_link {
+    uint pos;
+    XML_str_replace_info* info;
+    XML_strpos_link* tail;
+};
+const char* XML_str_replace (const char* from, uint n, ...) {
+    uint fi, ti, ri;
+    va_list args;
+    va_start(args, n);
+    XML_str_replace_info* rep_infos = GC_malloc(n * sizeof(XML_str_replace_info));
+    for (ri = 0; ri < n; ri++) {
+        rep_infos[ri].from = va_arg(args, const char*);
+        rep_infos[ri].to = va_arg(args, const char*);
+        rep_infos[ri].from_len = strlen(rep_infos[ri].from);
+        rep_infos[ri].to_len = strlen(rep_infos[ri].to);
+    }
+    va_end(args);
+    XML_strpos_link* reps = NULL;
+    XML_strpos_link** cur_reps = &reps;
+    int len_diff = 0;
+    for (fi = 0; from[fi]; fi++) {
+        for (ri = 0; ri < n; ri++) {
+            if (0==memcmp(from+fi, rep_infos[ri].from, rep_infos[ri].from_len)) {
+                *cur_reps = GC_malloc(sizeof(XML_strpos_link));
+                (*cur_reps)->pos = fi;
+                (*cur_reps)->info = &rep_infos[ri];
+                (*cur_reps)->tail = NULL;
+                cur_reps = &(*cur_reps)->tail;
+                len_diff += rep_infos[ri].to_len - rep_infos[ri].from_len;
+                fi += rep_infos[ri].from_len;
+                break;  // from looping over rep_infos
+            }
+        }
+    }
+    char* to = GC_malloc(fi + len_diff + 1);
+    for (fi = 0, ti = 0; reps; reps = reps->tail) {
+        memcpy(to+ti, from+fi, reps->pos - fi);
+        ti += reps->pos - fi;
+        fi = reps->pos;
+        memcpy(to+ti, reps->info->to, reps->info->to_len);
+        ti += reps->info->to_len;
+        fi += reps->info->from_len;
+    }
+    strcpy(to+ti, from+fi);
+    return (const char*)to;
+}
+
+
 uint XML_is_str (XML xml) { return xml.tag->is_str; }
 uint XML_is_valid (XML xml) { return xml.tag != NULL; }
 
@@ -130,68 +185,21 @@ uint XML_strlen (XML xml) {
 }
 
 const char* XML_escape (const char* in) {
-	uint len = XML_strlen((XML)in);
-	uint i;
-	uint xi;
-	char* r = GC_malloc(len + 1);
-	for (i = 0, xi = 0; in[i]; i++) {
-		switch (in[i]) {
-			case '<': { memcpy(r+xi, "&lt;", 4); xi += 4; break; }
-			case '>': { memcpy(r+xi, "&gt;", 4); xi += 4; break; }
-			case '&': { memcpy(r+xi, "&amp;", 5); xi += 5; break; }
-			case '"': { memcpy(r+xi, "&quot;", 6); xi += 6; break; }
-			default: { r[xi++] = in[i]; break; }
-		}
-	}
-	r[xi] = 0;
-	return (const char*)r;
+    return XML_str_replace(in, 4,
+        "<", "&lt;",
+        ">", "&gt;",
+        "&", "&amp;",
+        "\"", "&quot;"
+    );
 }
 
 const char* XML_unescape (const char* in) {
-	char* r = GC_malloc(strlen(in) + 1);  // We can afford to be sloppy
-	uint i;
-	uint ri;
-	for (i = 0, ri = 0; in[i]; i++, ri++) {
-		r[ri] = in[i];
-		if (in[i] == '&') {
-			if (in[i+1] == 'l') {
-				if (in[i+2] == 't') {
-					if (in[i+3] == ';') {
-						r[ri] = '<'; i += 3;
-					}
-				}
-			}
-			else if (in[i+1] == 'g') {
-				if (in[i+2] == 't') {
-					if (in[i+3] == ';') {
-						r[ri] = '>'; i += 3;
-					}
-				}
-			}
-			else if (in[i+1] == 'a') {
-				if (in[i+2] == 'm') {
-					if (in[i+3] == 'p') {
-						if (in[i+4] == ';') {
-							r[ri] = '&'; i += 4;
-						}
-					}
-				}
-			}
-			else if (in[i+1] == 'q') {
-				if (in[i+2] == 'u') {
-					if (in[i+3] == 'o') {
-						if (in[i+4] == 't') {
-							if (in[i+5] == ';') {
-								r[ri] = '"'; i += 5;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	r[ri] = 0;
-	return (const char*)r;
+    return XML_str_replace(in, 4,
+        "&lt;", "<",
+        "&gt;", ">",
+        "&amp;", "&",
+        "&quot;", "\""
+    );
 }
 
 const char* XML_as_text (XML xml) {
@@ -444,6 +452,12 @@ void XML_test () {
 		fprintf(stderr, "Error: Parse failed at position %u\n", failspot);
 		exit(1);
 	}
+    const char* esct = "asdf<fdsa>asdf&fdsa\"asdf";
+    puts(esct);
+    esct = XML_escape(esct);
+    puts(esct);
+    esct = XML_unescape(esct);
+    puts(esct);
 	puts(XML_as_text(parsed));
 }
 /*
