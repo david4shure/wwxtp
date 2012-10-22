@@ -58,36 +58,7 @@ BUGS: Giving an empty string as one of the children in XML_tag will confuse
 #include <gc/gc.h>
 #include <ctype.h>
 
-typedef unsigned int uint;
-typedef union XML XML;
-
-typedef struct XML_Attr {
-	const char* name;
-	const char* value;
-} XML_Attr;
-
-typedef struct XML_Tag {
-	uint is_str;
-	const char* name;
-	uint n_attrs;
-	XML_Attr* attrs;
-	uint n_contents;
-	XML* contents;
-} XML_Tag;
-
-union XML {
-	XML_Tag* tag;
-	const char* str;
-};
-
-uint XML_is_str (XML);
-uint XML_is_valid (XML);
-uint XML_strlen (XML);
-const char* XML_escape (const char*);
-const char* XML_unescape (const char*);
-const char* XML_as_text (XML);
-const char* XML_get_attr (XML, const char*);
-XML XML_get_child (XML, const char*);
+#include "xml.h"
 
 
 typedef struct XML_str_replace_info {
