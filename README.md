@@ -4,6 +4,7 @@ wwxtp-server
 Weather Server written in C
 
 Here are the steps for using the server side socket API in C
+
 1. socket() "Socket() creates a socket that returns an integer which is the file descriptor of the socket"
 
 2. bind() "Bind() binds the socket to a specific port and returns an integer describing the error state of the command"
