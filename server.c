@@ -50,55 +50,65 @@ char* recv_string (int sock) {
     return buf;
 }
 
+const char* query_api (const char* lat, const char* lon) {
+
+  struct sockaddr_in sa;
+  char buffer[MAX_BUFFER];
+  static char RequestBegin[] = "GET /api/e5df4405be67dec2/geolookup/q/";
+  static char RequestEnd[] = ".xml\r\n\r\n";
+  char Request[strlen(lat) + strlen(lon) + strlen(RequestBegin) + strlen(RequestEnd) + 2];
+  Request[0] = 0;
+  strcat(Request, RequestBegin);
+  strcat(Request, lat);
+  strcat(Request, ",");
+  strcat(Request, lon);
+  strcat(Request, RequestEnd);
+  puts(Request);
+  static char WunderServer[] = "38.102.136.138";
+  int sockfd = CHECK(socket, AF_INET, SOCK_STREAM, 0);
+  inet_pton(AF_INET, WunderServer, &(sa.sin_addr));
+  sa.sin_family = AF_INET;
+  sa.sin_port = htons(80);
+  int sockconn = CHECK(connect, sockfd, (struct sockaddr *)&sa, sizeof(sa));
+  int socksend = CHECK(send, sockfd, Request, strlen(Request), 0);
+  int sockrecv = 1;
+  int len = 1;
+  char* str = GC_malloc(len);
+  str[0] = '\0';
+  do {
+    sockrecv = CHECK(recv, sockfd, &buffer, MAX_BUFFER, 0);
+    if(sockrecv > 0) {
+      buffer[sockrecv] = '\0';
+      printf("%s", buffer);
+      len += sockrecv;
+      str = GC_realloc(str, len);
+      strcat(str, buffer);
+    }
+  } while(sockrecv > 0);
+  int sockclose = CHECK(close, sockfd);
+  puts(str);
+  return str;
+}
+
 const char* error_response = "<wwxtp>Error!</wwxtp>";
 
 const char* process_message (const char* message) {
     puts("Start processing message...");
     XML wwxtp = XML_parse(message);
-    XML query = XML_get_child(wwxtp, "query");
-    if (!XML_is_valid(query)) return error_response;
-    XML command = XML_get_child(query, "command");
+    XML request = XML_get_child(wwxtp, "request");
+    if (!XML_is_valid(request)) return error_response;
+    XML command = XML_get_child(request, "command");
     if (!XML_is_valid(command)) return error_response;
     XML command_text = command.tag->contents[0];
     if (!XML_is_str(command_text)) return error_response;
-    if (0!=strcmp(command_text.str, "TEST")) return error_response;
-    XML id = XML_get_child(query, "id");
-    if (!XML_is_valid(id)) return error_response;
-    XML id_text = id.tag->contents[0];
-    if (!XML_is_str(id_text)) return error_response;
-    printf("ID: %s\n", id_text.str);
-     // search database
-    uint i;
-    for (i = 0; i < TEST_DATABASE_SIZE; i++) {
-        if (0==strcmp(test_database[i].id, id_text.str)) {
-            puts("Building xml...");
-            return XML_as_text(
-                XML_tag( "wwxtp", NULL,
-                    XML_tag( "response", NULL,
-                        XML_tag( "id", NULL,
-                            test_database[i].id,
-                            NULL
-                        ),
-                        XML_tag( "city", NULL,
-                            test_database[i].city,
-                            NULL
-                        ),
-                        XML_tag( "name", NULL,
-                            test_database[i].name,
-                            NULL
-                        ),
-                        XML_tag( "where", NULL,
-                            test_database[i].where,
-                            NULL
-                        ),
-                        NULL
-                    ),
-                    NULL
-                )
-            );
-        }
-    }
-    return "<wwxtp>Error: Not found</wwxtp>";
+    if (0!=strcmp(command_text.str, "RETRIEVE")) return error_response;
+    XML position = XML_get_child(request, "position");
+    if (!XML_is_valid(position)) return error_response;
+    const char* lat = XML_get_attr(position, "lat");
+    if (!lat) return error_response;
+    const char* lon = XML_get_attr(position, "lon");
+    if (!lon) return error_response;
+    return query_api(lat, lon);
 }
 
 
