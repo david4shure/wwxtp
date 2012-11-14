@@ -5,6 +5,8 @@ use Socket;
 use autodie;
 use v5.14;
 use XML::Simple;
+use JSON::PP;
+use Data::Dumper;
 
 sub error_response {
     my ($client_con, $mess) = @_;
@@ -52,7 +54,7 @@ while (accept(my $client_con, $sock)) {
 
     sub query_api {
         my ($lat, $lon) = @_;
-        my $query_string = "GET /api/e5df4405be67dec2/conditions/q/$lat,$lon.xml\r\n\r\n";
+        my $query_string = "GET /api/e5df4405be67dec2/conditions/q/$lat,$lon.json\r\n\r\n";
         my $wunderground = "38.102.136.138";
         socket(my $wundersock, AF_INET, SOCK_STREAM, $protocol);
         connect($wundersock, sockaddr_in(80, inet_aton($wunderground)));
@@ -67,6 +69,22 @@ while (accept(my $client_con, $sock)) {
     }
 
     my $response = query_api($lat, $lon);
-    send($client_con, $response, 0);
+		my $json = decode_json $response;
+		print Dumper($json);
+		print $json->{current_observation}{weather};
+
+		my $wind_speed = $json->{current_observation}{wind_mph};
+		my $wind_deg = $json->{current_observation}{wind_degrees};
+		my $tempf = $json->{current_observation}{temp_f};
+		my $tempc = $json->{current_observation}{temp_c};
+		print $client_con <<END;
+<wwxtp>
+    <response>
+        <temp unit="F">$tempf</temp>
+        <wind-speed unit="mph">$wind_speed</wind-speed>
+        <wind-direction>$wind_deg</wind-direction>
+    </response>
+</wwxtp>
+END
     close($client_con);
 }
