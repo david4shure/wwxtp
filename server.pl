@@ -19,6 +19,7 @@ my $protocol = getprotobyname('tcp');
 socket(my $sock, AF_INET, SOCK_STREAM, $protocol);
 
 $SIG{__DIE__} = sub {
+    no autodie;
     close($sock);
     die($_[0])
 };
