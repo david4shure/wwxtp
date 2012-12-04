@@ -49,7 +49,7 @@ while (1) {
             print $buffer;
             $req .= $buffer;
         }
-        chop $req if substr($req, -1, 1) eq '\0';
+        $req =~ tr/\0//d;
         say "Client Message: $req";
 
         my $request = XMLin($req);
