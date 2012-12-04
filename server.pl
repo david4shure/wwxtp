@@ -48,16 +48,23 @@ while (1) {
     for my $client_con (grep vec($rout, fileno($_), 1), @clients) {
 
         say "recv()ing ...";
-        recv($client_con, my $buffer, 10000000, 0);
-        say "Client Message: $buffer ";
+        my $req = '';
+        while (1) {
+            recv($client_con, my $buffer, 10000, 0);
+            last if $buffer eq '';
+            print $buffer;
+            $req .= $buffer;
+        }
+        chop $req if substr($req, -1, 1) eq '\0';
+        say "Client Message: $req";
 
-        my $request = XMLin($buffer);
-        use Data::Dumper;
-        say Dumper($request);
+        my $request = XMLin($req);
+        #use Data::Dumper;
+        #say Dumper($request);
 
         my $command = $request->{request}{command};
         defined $command or error_response($client_con, "No <command> tag was found");
-        $command eq 'RETRIEVE' or error_reponse($client_con, "This server only supports the 'RETRIEVE' command.");
+        $command eq 'RETRIEVE' or error_response($client_con, "This server only supports the 'RETRIEVE' command.");
         my $position = $request->{request}{position};
         defined $position or error_response($client_con, "No <position> tag was found");
         my $lat = $position->{lat};
@@ -74,7 +81,7 @@ while (1) {
             send($wundersock, $query_string, 0);
             my $r = '';
             while (1) {
-                recv($wundersock, my $buffer, 10000000, 0);
+                recv($wundersock, my $buffer, 10000, 0);
                 return $r if $buffer eq '';
                 print $buffer;
                 $r .= $buffer;
