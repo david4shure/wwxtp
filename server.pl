@@ -46,10 +46,9 @@ while (1) {
         while (1) {
             recv($client_con, my $buffer, 10000, 0);
             last if $buffer eq '';
-            print $buffer;
             $req .= $buffer;
         }
-        $req =~ tr/\0//d;
+        $req =~ tr/\x00-\x1f//d;
         say "Client Message: $req";
 
         my $request = XMLin($req);
